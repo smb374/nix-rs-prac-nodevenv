@@ -5,14 +5,18 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-root.url = "github:srid/flake-root";
+    flake-utils.url = "github:numtide/flake-utils";
     mission-control.url = "github:Platonic-Systems/mission-control";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
     };
     crane = {
       url = "github:ipetkov/crane";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-utils.follows = "flake-utils";
+      inputs.rust-overlay.follows = "rust-overlay";
     };
   };
 
@@ -79,10 +83,10 @@
               exec = "nix build '.#container'";
             };
             copy-container = {
-              description = "Copy container to \"containers-storage\" (OCI compliant).";
-              exec = with config; ''
-                ${lib.getExe packages.skopeo} --insecure-policy copy docker-archive:${packages.container} containers-storage:localhost/${name}:latest
-                ${lib.getExe packages.skopeo} --insecure-policy inspect containers-storage:localhost/${name}:latest
+              description = "Copy container to \"containers-storage\" (requires podman).";
+              exec = ''
+                IMAGE_PATH=$(nix eval --raw '.#packages.${system}.container')
+                skopeo --insecure-policy copy docker-archive:"$IMAGE_PATH" containers-storage:localhost/${name}:latest
               '';
             };
             test-package = {
@@ -94,13 +98,13 @@
           packages.rustfmt = pkgs.rustfmt;
           packages.skopeo = pkgs.skopeo;
 
-          packages.container = pkgs.dockerTools.buildLayeredImage {
+          packages.container = with config; pkgs.dockerTools.buildLayeredImage {
             name = name;
             tag = "latest";
             created = "now";
-            contents = [ config.packages.default ];
+            contents = [ packages.default ];
             config = {
-              EntryPoint = [ "${config.packages.default}/bin/nix-rs-prac-nodevenv" ];
+              EntryPoint = [ "${packages.default}/bin/nix-rs-prac-nodevenv" ];
             };
           };
 
@@ -109,6 +113,7 @@
             packages = [
               git
             ] ++ [
+              rustToolchain
               config.packages.rustfmt
               config.packages.skopeo
             ];
