@@ -89,9 +89,6 @@
                 skopeo --insecure-policy copy docker-archive:"$IMAGE_PATH" containers-storage:localhost/${name}:latest
               '';
             };
-            test-package = {
-              exec = "echo ${rustToolchain}";
-            };
           };
 
           packages.default = my-crate;
