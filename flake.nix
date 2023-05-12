@@ -8,20 +8,18 @@
     flake-root.url = "github:srid/flake-root";
     flake-utils.url = "github:numtide/flake-utils";
     mission-control.url = "github:Platonic-Systems/mission-control";
-    rust-overlay = {
-      url = "github:oxalica/rust-overlay";
+    fenix = {
+      url = "github:nix-community/fenix";
       inputs.nixpkgs.follows = "nixpkgs";
-      inputs.flake-utils.follows = "flake-utils";
     };
     crane = {
       url = "github:ipetkov/crane";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
-      inputs.rust-overlay.follows = "rust-overlay";
     };
   };
 
-  outputs = inputs@{ nixpkgs, flake-parts, rust-overlay, crane, ... }:
+  outputs = inputs@{ nixpkgs, flake-parts, fenix, crane, ... }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         # To import a flake module
@@ -32,19 +30,20 @@
         inputs.mission-control.flakeModule
       ];
       systems = [ "x86_64-linux" ];
-      perSystem = { config, self', inputs', system, ... }:
+      perSystem = { config, self', inputs', lib, pkgs, system, ... }:
         let
-          pkgs = import nixpkgs {
-            inherit system;
-            overlays = [ (import rust-overlay) ];
-          };
-          inherit (pkgs) lib;
-
           name = "nix-rs-prac-nodevenv";
 
-          rustToolchain = pkgs.rust-bin.stable.latest.default.override {
-            extensions = [ "rust-src" ];
-          };
+          fenixStable = fenix.packages.${system}.stable;
+
+          rustToolchain = fenixStable.withComponents [
+            "rustc"
+            "cargo"
+            "clippy"
+            "rust-src"
+            "rust-docs"
+            "llvm-tools-preview"
+          ];
           craneLib = crane.lib.${system}.overrideToolchain (rustToolchain);
           src = craneLib.cleanCargoSource (craneLib.path ./.);
 
@@ -93,7 +92,6 @@
           };
 
           packages.default = my-crate;
-          packages.rustfmt = pkgs.rustfmt;
           packages.skopeo = pkgs.skopeo;
 
           packages.container = with config; pkgs.dockerTools.buildLayeredImage {
@@ -112,7 +110,6 @@
               git
             ] ++ [
               rustToolchain
-              config.packages.rustfmt
               config.packages.skopeo
             ];
 
