@@ -84,9 +84,9 @@
             };
             copy-container = {
               description = "Copy container to \"containers-storage\" (requires podman).";
-              exec = ''
+              exec = with config; ''
                 IMAGE_PATH=$(nix eval --raw '.#packages.${system}.container')
-                skopeo --insecure-policy copy docker-archive:"$IMAGE_PATH" containers-storage:localhost/${name}:latest
+                ${lib.getExe packages.skopeo} --insecure-policy copy docker-archive:"$IMAGE_PATH" containers-storage:localhost/${name}:latest
               '';
             };
           };
