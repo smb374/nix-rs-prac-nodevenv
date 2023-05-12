@@ -1,5 +1,6 @@
 {
-  description = "Description for the project";
+  description = "A practice project that creates an development environment for Rust with Nix flake.";
+  nixConfig.bash-prompt-prefix = "\\e[0;34m(nix develop)\\e[0m ";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
